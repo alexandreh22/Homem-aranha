@@ -1,0 +1,967 @@
+usando o UnityEngine;
+usando System.Collections;
+usando System.Collections.Generic;
+
+Classes de gerenciamento necessárias que estavam faltando
+classe pública GameManager : MonoBehaviour
+{
+ instância estática pública do GameManager;
+ 
+void Despertar()
+ {
+ if (Instância == nulo)
+ {
+ Instância = this;
+ DontDestroyOnLoad(gameObject);
+ }
+ mais
+ {
+ Destruir (gameObject);
+ }
+ }
+ 
+public void PlayerDied()
+ {
+ Implementar lógica de game over
+ Debug.Log("Fim de jogo - O jogador morreu");
+ Mostrar tela de game over após 2 segundos
+ StartCoroutine(ShowGameOverScreen());
+ }
+ 
+IEnumerator ShowGameOverScreen()
+ {
+ yield return new WaitForSeconds(2);
+ UIManager.Instance.ShowGameOverScreen();
+ }
+ 
+public void RestartLevel()
+ {
+ Recarregar a cena atual
+ UnityEngine.SceneManagement.SceneManager.LoadScene(
+ UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex
+ );
+ }
+}
+
+classe pública UIManager : MonoBehaviour
+{
+ instância UIManager estática pública;
+ 
+[Cabeçalho ("Elementos de interface")]
+ missão pública GameObjectStartPanel;
+ public GameObject objectiveCompletePanel;
+ gameOverScreen gameObject público;
+ público UnityEngine.UI.Text missãoTitleText;
+ público UnityEngine.UI.Text objectiveText;
+ 
+void Despertar()
+ {
+ if (Instância == nulo)
+ {
+ Instância = this;
+ DontDestroyOnLoad(gameObject);
+ }
+ mais
+ {
+ Destruir (gameObject);
+ }
+ }
+ 
+public void ShowMissionStart(Missão missão)
+ {
+ missionTitleText.text = mission.missionName;
+ missionStartPanel.SetActive(true);
+ StartCoroutine(HidePanelAfterDelay(missionStartPanel, 3f));
+ }
+ 
+public void ShowObjectiveComplete(Objetivo da Missão)
+ {
+ textoObjetivo.texto = descrição.objetivo + " - Concluído!";
+ objectiveCompletePanel.SetActive(true);
+ StartCoroutine(HidePanelAfterDelay(objectiveCompletePanel, 2f));
+ }
+ 
+público vazio ShowGameOverScreen()
+ {
+ gameOverScreen.SetActive(true);
+ }
+ 
+IEnumerator HidePanelAfterDelay(painel GameObject, atraso de flutuação)
+ {
+ yield return new WaitForSeconds(delay);
+ painel. SetActive(falso);
+ }
+}
+
+classe pública PostProcessingManager : MonoBehaviour
+{
+ instância PostProcessingManager estática pública;
+ 
+material de públicoEfeito aranhaSentido;
+ UnityEngine.Rendering.Volume privado postProcessVolume;
+ 
+void Despertar()
+ {
+ if (Instância == nulo)
+ {
+ Instância = this;
+ DontDestroyOnLoad(gameObject);
+ }
+ mais
+ {
+ Destruir (gameObject);
+ }
+ 
+postProcessVolume = GetComponent<UnityEngine.Rendering.Volume>();
+ }
+ 
+public void ActivateSpiderSenseEffect()
+ {
+ Implementar efeito visual do sentido aranha
+ if (postProcessVolume != null)
+ {
+ postProcessVolume.weight = 1f;
+ }
+ }
+ 
+público void DeactivateSpiderSenseEffect()
+ {
+ if (postProcessVolume != null)
+ {
+ postProcessVolume.weight = 0f;
+ }
+ }
+}
+
+Classe para inimigos
+classe pública EnemyController : MonoBehaviour
+{
+ saúde pública flutuante = 100f;
+ ataque de flutuação públicaDamage = 10f;
+ ataque de flutuação pública = 2f;
+ movimento de flutuação pública Velocidade = 3f;
+ detecção de flutuação públicaRange = 10f;
+ 
+jogador privado de transformação;
+ private bool isHighlighted = false;
+ material privado originalMaterial;
+ material privado destaqueMaterial;
+ Renderizador privado enemyRenderer;
+ animador privado;
+ CharacterController privado characterController;
+ private bool isDead = false;
+ 
+void Start()
+ {
+ jogador = GameObject.FindGameObjectWithTag("Jogador").transform;
+ enemyRenderer = GetComponentInChildren<Renderer>();
+ animador = GetComponent<Animador>();
+ characterController = GetComponent<CharacterController>();
+ 
+if (enemyRenderer != null)
+ {
+ materialoriginal = enemyRenderer.material;
+ highlightMaterial = new Material(originalMaterial);
+ highlightMaterial.color = Cor.vermelho;
+ }
+ }
+ 
+void Update()
+ {
+ if (isDead) retornar;
+ 
+float distanceToPlayer = Vector3.Distance(transform.position, player.position);
+ 
+if (distanceToPlayer <= detectionRange)
+ {
+ Olhar para o jogador
+ Direção do vetor3 = (player.position - transform.position).normalizado;
+ direção.y = 0;
+ Quatérnio lookRotation = Quaternion.LookRotation(direção);
+ transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Time.deltaTime * 5f);
+ 
+if (distanceToPlayer > attackRange)
+ {
+ Mover em direção ao jogador
+ Vector3 moveDirection = direção * moveSpeed * Time.deltaTime;
+ characterController.Move(moveDirection);
+ 
+if (animador != null)
+ {
+ animador. SetBool("IsWalking", true);
+ animador. SetBool("IsAttacking", false);
+ }
+ }
+ mais
+ {
+ Atacar
+ if (animador != null)
+ {
+ animador. SetBool("IsWalking", false);
+ animador. SetBool("IsAttacking", true);
+ }
+ 
+Atacar a cada 1.5 segundos
+ if (Time.time % 1,5f < 0,1f)
+ {
+ AttackPlayer();
+ }
+ }
+ }
+ mais
+ {
+ if (animador != null)
+ {
+ animador. SetBool("IsWalking", false);
+ animador. SetBool("IsAttacking", false);
+ }
+ }
+ 
+Aplicar gravidade
+ if (!characterController.isGrounded)
+ {
+ Vetor3 gravidade = Vetor3.down * 20f * Time.deltaTime;
+ characterController.Move(gravidade);
+ }
+ }
+ 
+void AttackPlayer()
+ {
+ float distanceToPlayer = Vector3.Distance(transform.position, player.position);
+ 
+if (distanceToPlayer <= attackRange)
+ {
+ Aplicar dano ao jogador
+ SpiderManController playerController = jogador. GetComponent<SpiderManController>();
+ if (playerController != null)
+ {
+ playerController.TakeDamage(attackDamage);
+ }
+ }
+ }
+ 
+public void TakeDamage(dano flutuante)
+ {
+ saúde -= dano;
+ 
+if (animador != null)
+ {
+ animador. SetTrigger("Hit");
+ }
+ 
+if (saúde <= 0 && !isDead)
+ {
+ Morrer();
+ }
+ }
+ 
+void Morrer()
+ {
+ isDead = true;
+ 
+if (animador != null)
+ {
+ animador. SetTrigger("Morte");
+ }
+ 
+Desativar colisões e controle
+ characterController.enabled = false;
+ 
+Atualizar missões
+ MissionSystem.Instance.UpdateObjectiveForAllMissions(MissionObjective.MissionObjectiveType.DefeatEnemies);
+ 
+Destruir após 3 segundos
+ Destruir (gameObject, 3f);
+ }
+ 
+Destaque do vazio público(destaque do bool)
+ {
+ isHighlighted = realce;
+ 
+if (enemyRenderer != null)
+ {
+ enemyRenderer.material = realce ? material de destaque: materialoriginal
+ }
+ }
+}
+
+Sistema de Mobile Input que faltava
+classe pública MobileInputManager : MonoBehaviour
+{
+ evento estático público System.Action<Vector2> OnJoystickMoved;
+ evento estático público System.Action<Vector2> OnCameraJoystickMoved;
+ evento estático público System.Action<bool> OnJumpPressed;
+ evento estático público System.Action<bool> OnWebSwingPressed;
+ evento estático público System.Action<bool> OnWebZipPressed;
+ evento estático público System.Action<bool> OnAttackPressed;
+ evento estático público System.Action<bool> OnSpiderSensePressed;
+ evento estático público System.Action<bool> OnDodgePressed;
+ 
+público GameObject movementJoystickArea;
+ público GameObject cameraJoystickArea;
+ 
+Vector2 privado movementJoystickInput;
+ Vec privadotor2 cameraJoystickInput;
+ 
+bool privado jumpButtonState;
+ bool privado webSwingButtonState;
+ bool privado webZipButtonState;
+ ataque booleano privadoButtonState;
+ aranha bool privadaSenseButtonState;
+ private bool dodgeButtonState;
+ 
+instância MobileInputManager estática pública;
+ 
+void Despertar()
+ {
+ if (Instância == nulo)
+ {
+ Instância = this;
+ DontDestroyOnLoad(gameObject);
+ }
+ mais
+ {
+ Destruir (gameObject);
+ }
+ }
+ 
+// Métodos que serão chamados pelos botões da UI
+ public void MovementJoystickInput(Vector2 input)
+ {
+ movementJoystickInput = entrada;
+ if (OnJoystickMoved != null) OnJoystickMoved(input);
+ }
+ 
+public void CameraJoystickInput(Vector2 input)
+ {
+ cameraJoystickInput = entrada;
+ if (OnCameraJoystickMoved != null) OnCameraJoystickMoved(input);
+ }
+ 
+public void JumpButton(bool isPressed)
+ {
+ jumpButtonState = isPressed;
+ if (OnJumpPressed != null) OnJumpPressed(isPressed);
+ }
+ 
+public void WebSwingButton(bool isPressed)
+ {
+ webSwingButtonState = isPressed;
+ if (OnWebSwingPressed != null) OnWebSwingPressed(isPressed);
+ }
+ 
+public void WebZipButton(bool isPressed)
+ {
+ webZipButtonState = isPressed;
+ if (OnWebZipPressed != null) OnWebZipPressed(isPressed);
+ }
+ 
+public void AttackButton(bool isPressed)
+ {
+ attackButtonState = isPressed;
+ if (OnAttackPressed != null) OnAttackPressed(isPressed);
+ }
+ 
+public void SpiderSenseButton(bool isPressed)
+ {
+ spiderSenseButtonState = isPressed;
+ if (OnSpiderSensePressed != null) OnSpiderSensePressed(isPressed);
+ }
+ 
+público void DodgeButton(bool isPressed)
+ {
+ dodgeButtonState = isPressed;
+ if (OnDodgePressed != null) OnDodgePressed(isPressed);
+ }
+}
+
+Completando o código do MissionSystem que estava incompleto
+classe pública MissionSystem : MonoBehaviour
+{
+ public List<Mission> availableMissions = new List<Mission>();
+ public Lista<Missão> activeMissões = new Lista<Missão>();
+ public List<Mission> completedMissions = new List<Mission>();
+ 
+instância estática pública do MissionSystem;
+ 
+void Despertar()
+ {
+ if (Instância == nulo)
+ {
+ Instância = this;
+ DontDestroyOnLoad(gameObject);
+ }
+ mais
+ {
+ Destruir (gameObject);
+ }
+ }
+ 
+void Start()
+ {
+ Inicializar missões disponíveis
+ LoadMissions();
+ }
+ 
+void LoadMissions()
+ {
+ // Aqui normalmente carregaríamos de um arquivo JSON
+ Para o exemplo, criaremos algumas missões padrão
+ 
+Missão tutorial
+ Tutorial de missão = new Mission();
+ tutorial.missionName = "Aprendendo a ser o Homem-Aranha";
+ tutorial.description = "Aprenda os controles básicos do jogo";
+ tutorial.isMainStory = true;
+ tutorial.experienceReward = 100;
+ 
+MissionObjective swingObjective = new MissionObjective();
+ swingObjective.description = "Balance usando a teia 3 vezes";
+ swingObjective.type = MissionObjective.MissionObjectiveType.WebSwingChallenge;
+ swingObjective.targetAmount = 3;
+ tutorial.objectives.Add(swingObjective);
+ 
+ObjetivoDaMissãoObjetivo combate = new ObjetivoDoMissão();
+ combatObjective.description = "Derrote 2 inimigos";
+ combatObjective.type = MissionObjective.MissionObjectiveType.DefeatEnemies;
+ combatObjective.targetAmount = 2;
+ tutorial.objectives.Add(combatObjective);
+ 
+availableMissions.Add(tutorial);
+ 
+Missão secundária
+ Missão photoMission = new Mission();
+ photoMission.missionName = "Fotos para o Clarim Diário";
+ photoMission.description = "Tire fotos de pontos importantes da cidade";
+ Missão fotográfica.isMainStory = false;
+ photoMission.experienceReward = 150;
+ 
+MissionObjective photoObjective = new MissionObjective();
+ photoObjective.description = "Fotografe 3 pontos turísticos";
+ fotoObjetivo.tipo = ObjetivoDaMissão.TipoObjetivoDaMissão.Fotografia;
+ photoObjective.targetAmount = 3;
+ photoMission.objectives.Add(photoObjective);
+ 
+availableMissions.Add(photoMission);
+ }
+ 
+public void ActivateMission(string missionName)
+ {
+ Missão missão = availableMissions.Find(m => m.missionName == missionName);
+ if (missão != null)
+ {
+ mission.isActive = true;
+ activeMissions.Add(missão);
+ availableMissions.Remove(missão);
+ 
+// Notificar UI
+ UIManager.Instance.ShowMissionStart(missão);
+ }
+ }
+ 
+public void UpdateObjective(string missionName, int objectiveIndex, int amount = 1)
+ {
+ Missão missão = activeMissions.Find(m => m.missionName == missionName);
+ if (missão != null && indice objetivo < mission.objectives.Count)
+ {
+ MissãoObjetivo objetivo = missão.objetivos[indiceObjetivo];
+ objective.currentAmount += valor;
+ 
+se (objetivo. Verificação de conclusão())
+ {
+ Notificar conclusão do objetivo
+ UIManager.Instance.ShowObjectiveComplete(objetivo);
+ 
+Verificar se a missão foi concluída
+ se (missão. Verificação de conclusão())
+ {
+ CompleteMission(missão);
+ }
+ }
+ }
+ }
+ 
+public void UpdateObjectiveForAllMissions(MissionObjective.MissionObjectiveType tipo, int amount = 1)
+ {
+ foreach (missão missão em activeMissions)
+ {
+ for (int i = 0; i < mission.objectives.Count; i++)
+ {
+ if (missão.objetivos[i].tipo == tipo)
+ {
+ UpdateObjective(mission.missionName, i, amount);
+ }
+ }
+ }
+ }
+ 
+void CompleteMission(Missão missão)
+ {
+ mission.isCompleted = true;
+ mission.isActive = false;
+ 
+activeMissions.Remove(missão);
+ completedMissions.Add(missão);
+ 
+Dar recompensas ao jogador
+ Por exemplo, adicionar experiência
+ PlayerStats.Instance.AddExperience(missão.experiênciaRecompensa);
+ 
+Notificar UI de conclusão da missão
+ Debug.Log("Missão concluída: " + mission.missionName);
+ }
+}
+
+Spider-Man Controller (código principal)
+classe pública SpiderManController : MonoBehaviour
+{
+ [Header("Atributos Básicos")]
+ flutuação pública maxHealth = 100f;
+ corrente flutuante privadaSaúde;
+ flutuador público maxEnergy = 100f;
+ corrente de flutuação privadaEnergia;
+ energia de flutuação públicaRegenRate = 5f; Regeneração por segundo
+ 
+[Header("Movimento Básico")]
+ movimento de flutuação públicaVelocidade = 7.0f;
+ sprint de flutuação públicaVelocidade = 12,0f;
+ rotação do flutuador públicoVelocidade = 10.0f;
+ salto de flutuação públicaForça = 8.0f;
+ airControlFactor de flutuação pública = 0,7f;
+ gravidade do flutuador público = 20,0f;
+ 
+[Header("Teias e Balanço")]
+ webSwingSpeed = 15.0f;
+ flutuação pública webSwingAcceleration = 5.0f;
+ float público maxSwingSpeed = 25.0f;
+ float público webShootMaxDistance = 50.0f;
+ float público webZipSpeed = 20.0f;
+ float público webEnergyCost = 5f;
+ webPrefab público do GameObject;
+ público Transformar webShootPoint;
+ 
+[Cabeçalho("Escalada de Paredes")]
+ parede de flutuação públicaClimbSpeed = 5.0f;
+ parede de flutuação públicaRunSpeed = 8.0f;
+ LayerMask públicaCamadas escaláveis;
+ parede de flutuação públicaDetectionDistance = 0,5f;
+ parede de flutuação públicaClimbEnergyCost = 2f; Custo por segundo
+ 
+[Header("Combate")]
+ float público basicAttackDamage = 10f;
+ float público kickAttackDamage = 15f;
+ float público webAttackDamage = 8f;
+ ataque de flutuação públicaCooldown = 0.3f;
+ public float comboTimeWindow = 0,8f;
+ público int maxComboCount = 4;
+ 
+[Header("Sentido Aranha")]
+ float público spiderSenseRadius = 15.0f;
+ public LayerMask enemyLayers;
+ float público spiderSenseDuration = 10f;
+ spiderSenseCooldown = 30f;
+ private bool spiderSenseActive = false;
+ private bool canUseSpiderSense = true;
+ 
+[Cabeçalho("Componentes")]
+ CharacterController privado characterController;
+ animador privado;
+ câmera privada mainCamera;
+ private Vector3 moveDirection = Vector3.zero;
+ 
+[Header("Estado do Personagem")]
+ público SpiderManState currentState;
+ bool privado éGrounded;
+ private bool isSwinging = false;
+ private bool isWallClimbing = false;
+ private bool isWallRunning = false;
+ private bool isSrunning = false;
+ private int currentCombo = 0;
+ float privado lastAttackTime = -10f;
+ GameObject privado currentWebLine;
+ Vector3 privado swingPoint;
+ 
+Interface para mostrar dados do jogador
+ [Cabeçalho ("UI")]
+ healthBar público UnityEngine.UI.Slider;
+ público UnityEngine.UI.Slider energyBar;
+ 
+Contadores para missões
+ private int webSwingCount = 0;
+ private int zipCount = 0;
+ 
+public enum SpiderManState
+ {
+ Ocioso
+ Ambulante
+ Executando
+ Oscilante
+ Escalada em paredes,
+ Corrida na parede,
+ Salto
+ Caindo
+ Atacando
+ TakingDamage,
+ Furtividade
+ Empoleirado
+ }
+ 
+Variáveis de controle móvel
+ Vector2 privado movementInput;
+ cameraInput Vector2 privado;
+ salto de bool privadoPressionado;
+ web bool privadoSwingPressed;
+ bool privado webZipPressed;
+ ataque bool privadoPressionado;
+ aranha bool privadaSensePressed;
+ esquiva de bool privadoPressionado;
+ 
+void Start()
+ {
+ characterController = GetComponent<CharacterController>();
+ animador = GetComponent<Animator>();
+ mainCamera = Camera.main;
+ 
+currentHealth = maxHealth;
+ currentEnergy = maxEnergy;
+ 
+Inicializar estado
+ currentState = SpiderManState.Idle;
+ 
+Inicializar sistema mobile
+ MobileInputManager.OnJoystickMoved += HandleMovementJoystick;
+ MobileInputManager.OnCameraJoystickMoved += HandleCameraJoystick;
+ MobileInputManager.OnJumpPressed += HandleJumpInput;
+ MobileInputManager.OnWebSwingPressed += HandleWebSwingInput;
+ MobileInputManager.OnWebZipPressed += HandleWebZipInput;
+ MobileInputManager.OnAttackPressed += HandleAttackInput;
+ MobileInputManager.OnSpiderSensePressed += HandleSpiderSenseInput;
+ MobileInputManager.OnDodgePressed += HandleDodgeInput;
+ 
+Ativar missão inicial
+ if (MissionSystem.Instance.availableMissions.Count > 0)
+ {
+ MissionSystem.Instance.ActivateMission(MissionSystem.Instance.availableMissions[0].missionName);
+ }
+ }
+ 
+void OnDestroy()
+ {
+ Limpar delegados ao destruir
+ MobileInputManager.OnJoystickMoved -= HandleMovementJoystick;
+ MobileInputManager.OnCameraJoystickMoved -= HandleCameraJoystick;
+ MobileInputManager.OnJumpPressed -= HandleJumpInput;
+ MobileInputManager.OnWebSwingPressed -= HandleWebSwingInput;
+ MobileInputManager.OnWebZipPressed -= HandleWebZipInput;
+ MobileInputManager.OnAttackPressed -= HandleAttackInput;
+ MobileInputManager.OnSpiderSensePressed -= HandleSpiderSenseInput;
+ MobileInputManager.OnDodgePressed -= HandleDodgeInput;
+ }
+ 
+void Update()
+ {
+ Regenerar energia
+ RegenerateEnergy();
+ 
+Atualizar estado do personagem
+ UpdateState();
+ 
+Verificar inputs e processar movimento
+ HandleMovement();
+ 
+Atualizar animações
+ UpdateAnimations();
+ 
+// Atualizar UI
+ UpdateUI();
+ 
+Simular entrada pelo teclado para testes no editor
+#if UNITY_EDITOR
+ HandleKeyboardInput();
+#endif
+ }
+ 
+void UpdateUI()
+ {
+ if (healthBar != null)
+ {
+ healthBar.value = currentHealth / maxHealth;
+ }
+ 
+if (energyBar != null)
+ {
+ energyBar.value = currentEnergy / maxEnergy;
+ }
+ }
+ 
+#if UNITY_EDITOR
+ void HandleKeyboardInput()
+ {
+ Movimento
+ float h = Input.GetAxis("Horizontal");
+ float v = Input.GetAxis("Vertical");
+ HandleMovementJoystick(novo Vector2(h, v));
+ 
+Câmera (simulação simplificada)
+ HandleCameraJoystick(new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y")));
+ 
+Salto
+ if (Input.GetKeyDown(KeyCode.Space))
+ {
+ HandleJumpInput(true);
+ }
+ if (Input.GetKeyUp(KeyCode.Space))
+ {
+ HandleJumpInput(falso);
+ }
+ 
+Balanço
+ if (Input.GetKeyDown(KeyCode.E))
+ {
+ HandleWebSwingInput(verdadeiro);
+ }
+ if (Input.GetKeyUp(KeyCode.E))
+ {
+ HandleWebSwingInput(falso);
+ }
+ 
+CEP da Web
+ if (Input.GetKeyDown(KeyCode.Q))
+ {
+ HandleWebZipInput(true);
+ }
+ if (Input.GetKeyUp(KeyCode.Q))
+ {
+ HandleWebZipInput(falso);
+ }
+ 
+Ataque
+ if (Input.GetKeyDown(KeyCode.Mouse0))
+ {
+ HandleAttackInput(verdadeiro);
+ }
+ if (Input.GetKeyUp(KeyCode.Mouse0))
+ {
+ HandleAttackInput(falso);
+ }
+ 
+// Sentido Aranha
+ if (Input.GetKeyDown(KeyCode.F))
+ {
+ HandleSpiderSenseInput(verdadeiro);
+ }
+ if (Input.GetKeyUp(KeyCode.F))
+ {
+ HandleSpiderSenseInput(falso);
+ }
+ 
+Esquiva
+ if (Input.GetKeyDown(KeyCode.LeftShift))
+ {
+ HandleDodgeInput(verdadeiro);
+ }
+ if (Input.GetKeyUp(KeyCode.LeftShift))
+ {
+ HandleDodgeInput(falso);
+ }
+ }
+#endif
+ 
+void UpdateState()
+ {
+ Verificar se está no chão
+ isGrounded = characterController.isGrounded;
+ 
+Determinar estado baseado na situação atual
+ if (isSwinging)
+ {
+ currentState = SpiderManState.Swinging;
+ }
+ else if (isWallClimbing)
+ {
+ currentState = SpiderManState.WallClimbing;
+ }
+ else if (isWallRunning)
+ {
+ currentState = SpiderManState.WallRunning;
+ }
+ else if (!isGrounded && moveDirection.y < 0)
+ {
+ currentState = SpiderManState.Falling;
+ }
+ else if (!isGrounded && moveDirection.y >= 0)
+ {
+ currentState = SpiderManState.Jumping;
+ }
+ else if (isGrounded && characterController.velocity.magnitude > 0.1f)
+ {
+ currentState = isSrunning ? SpiderManState.Running : SpiderManState.Walking;
+ }
+ else if (isGrounded)
+ {
+ currentState = SpiderManState.Idle;
+ }
+ }
+ 
+void RegenerateEnergy()
+ {
+ if (currentEnergy < maxEnergy)
+ {
+ currentEnergy += energyRegenRate * Time.deltaTime;
+ if (currentEnergy > maxEnergy)
+ {
+ currentEnergy = maxEnergy;
+ }
+ }
+ }
+ 
+#region manipuladores de entrada
+ public void HandleMovementJoystick(Vector2 input)
+ {
+ movementInput = entrada;
+ 
+Detectar sprint (duplo toque para frente)
+ if (input.magnitude > 0,9f)
+ {
+ isSprinting = true;
+ }
+ else if (input.magnitude < 0,1f)
+ {
+ isSprinting = false;
+ }
+ }
+ 
+public void HandleCameraJoystick(entrada Vector2)
+ {
+ cameraInput = entrada;
+ 
+Rotar a câmera (isso seria implementado em um script de câmera)
+ if (mainCamera != null && input.magnitude > 0.1f)
+ {
+ O controle de câmera real seria mais complexo
+ }
+ }
+ 
+public void HandleJumpInput(bool pressionado)
+ {
+ jumpPressed = pressionado;
+ }
+ 
+public void HandleWebSwingInput(bool pressionado)
+ {
+ webSwingPressed = pressionado;
+ 
+if (pressionado && !isSwinging && currentEnergy >= webEnergyCost)
+ {
+ StartWebSwing();
+ }
+ else if (!pressed && isSwinging)
+ {
+ StopWebSwing();
+ }
+ }
+ 
+public void HandleWebZipInput(bool pressionado)
+ {
+ webZipPressed = pressionado;
+ 
+if (pressionado && currentEnergy >= webEnergyCost)
+ {
+ WebZip();
+ }
+ }
+ 
+public void HandleAttackInput(bool pressionado)
+ {
+ attackPressed = pressionado;
+ 
+se (pressionado)
+ {
+ PerformAttack();
+ }
+ }
+ 
+vazio público HandleSpiderSenseInput(bool pressionado)
+ {
+ spiderSensePressed = pressionado;
+ 
+if (pressionado && canUseSpiderSense)
+ {
+ ActivateSpiderSense();
+ }
+ }
+ 
+public void HandleDodgeInput(bool pressionado)
+ {
+ dodgePressed = pressionado;
+ 
+se (pressionado)
+ {
+ PerformDodge();
+ }
+ }
+ #endregion
+ 
+void HandleMovement()
+ {
+ Processamento de movimento diferente para cada estado
+ switch (currentState)
+ {
+ caso SpiderManState.Swinging:
+ HandleWebSwingMovement();
+ quebrar;
+ caso SpiderManState.WallClimbing:
+ HandleWallClimbMovement();
+ quebrar;
+ caso SpiderManState.WallRunning:
+ HandleWallRunMovement();
+ quebrar;
+ inadimplência:
+ HandleNormalMovement();
+ quebrar;
+ }
+ 
+Processar salto
+ if (jumpPressed && isGrounded)
+ {
+ moveDirection.y = jumpForce;
+ animador. SetTrigger("Salto");
+ }
+ 
+Verificar se precisa entrar em modo de escalada
+ CheckForWallClimb();
+ }
+ 
+void HandleNormalMovement()
+ {
+ Determinar velocidade baseada em sprint
+ corrente flutuanteVelocidade = isScorrendo ? sprintSpeed : movementSpeed;
+ 
+Calcular direção em relação à câmera
+ Vector3 encaminhar = mainCamera.transform.forward;
+ Vetor3 à direita = mainCamera.transform.right;
+ encaminhar.y = 0;
+ direita.y = 0;
+ encaminhar. Normalize();
+ Certo. Normalize();
+ 
+Calcular direção de movimento
+ Vector3 desiredMoveDirection = (para frente * movementInput.y + direita * movementInput.x).normalizado;
+ 
+if (desiredMoveDirection != Vector3.zero)
+ {
+ Rotacionar o personagem para a direção do movimento
+ transform.rotation = Quaternion.Slerp(transform.rotation, 
+ Quaternion.LookRotation(desiredMoveDirection), 
+ rotationSpeed * Time.deltaTime);
+ 
+Definir velocidade horizontal
+ float controlFactor = isGrounded ? 1.0f: airControlFactor;
+ moveDirection.x = desiredMoveDirection.x * currentSpeed * controlFactor;
+ moveDirection.z = desiredMoveDirection.z * currentSpeed * controlFactor;
+ }
+ mais
+ {
+ Desfile
+ moveDirection.x = 0;
+ moveDirection.z = 0;
